@@ -1,0 +1,16 @@
+{
+  "gender": "Female",
+  "name": "Alejandra",
+  "lastName": "Mesias",
+  "birthDate": {
+    "day": "10",
+    "month": "March",
+    "year": "2004"
+  },
+  "nationality": "Colombia",
+  "contact": {
+    "prefix": "Colombia (57)",
+    "phone": "3142633725",
+    "email": "gdanielfelipe@gmail.com"
+  }
+}

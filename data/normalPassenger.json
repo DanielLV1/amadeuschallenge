@@ -1,0 +1,11 @@
+{
+  "gender": "Male",
+  "name": "Juan",
+  "lastName": "Perez",
+  "birthDate": {
+    "day": "15",
+    "month": "March",
+    "year": "1990"
+  },
+  "nationality": "Colombia"
+}
