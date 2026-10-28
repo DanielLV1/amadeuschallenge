@@ -20,5 +20,8 @@ Feature: Flight search on Avianca
     And selects continue without sign in
     When fills passenger information:
       | passengerIndex | dataFile             | isBookingHolder |
-      | 1              | normalPassenger.json | false           |
-      | 2              | holderPassenger.json | true            |
+      |              1 | normalPassenger.json | false           |
+      |              2 | holderPassenger.json | true            |
+    Then selects continue to payment
+    Then the Request Services screen opens
+    When selects "No, I have what I need" if baggage menu is present

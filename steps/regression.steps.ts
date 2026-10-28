@@ -93,3 +93,14 @@ When('fills passenger information:', async ({ homePage }, table: DataTable) => {
     const holderData = JSON.parse(fs.readFileSync(holderPath, 'utf-8'));
     await homePage.fillBookingHolder(holderData);
 });
+When('selects continue to payment', async ({ homePage }) => {
+    await homePage.continueToPayment.click();
+    
+});
+
+Then('the Request Services screen opens', async ({ homePage }) => {
+  await expect(homePage.requestServicesTitle).toBeVisible();
+});
+When('selects {string} if baggage menu is present', async ({ homePage }, option: string) => {
+  await homePage.selectBaggageOption(option);
+});

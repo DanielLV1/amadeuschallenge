@@ -38,6 +38,11 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
         readonly holderConfirmEmail: Locator;
         readonly termsCheckbox: Locator;
         readonly promotionsCheckbox: Locator;
+        readonly continueToPayment: Locator;
+        readonly requestServicesTitle: Locator;
+        readonly noBaggageRadio: Locator;
+        readonly yesBaggageRadio: Locator;
+        readonly baggageHeading: Locator;
 
         constructor(page: Page, context: FlightContext = {}) {
             this.page = page;
@@ -69,12 +74,17 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             this.nextPassengerButton = page.getByRole('button', { name: 'Next' });
             this.holderSection = page.locator('div').filter({ hasText: /Booking holder/i }).last();
             this.holderPassengerSelect = page.locator('#mat-select-value-0').or(page.getByRole('combobox', { name: /Passenger/i })).first();
-            this.holderPrefix = page.getByRole('textbox', { name: 'Prefix' });
+            this.holderPrefix = page.getByRole('region', { name: /Booking holder/i }).getByLabel('Open options');
             this.holderPhone = page.getByTestId('phone-input');
             this.holderEmail = page.getByTestId('email-input-element');
             this.holderConfirmEmail = page.getByTestId('confirm-email-input-element');
             this.termsCheckbox = page.getByRole('checkbox', { name: /processing of my/i });
             this.promotionsCheckbox = page.getByRole('checkbox', { name: /use of my/i });
+            this.continueToPayment = page.getByTestId('cart-continue-btn'); 
+            this.requestServicesTitle = page.getByRole('heading', { name: 'Personalize your trip' });
+            this.noBaggageRadio = page.getByRole('radio', { name: /No, I have what I need/i });
+            this.yesBaggageRadio = page.getByRole('radio', { name: /Yes, I want to add baggage/i });
+            this.baggageHeading = page.getByRole('heading', { name: 'Do you need more baggage?' });
         }
 
         async goto() {
@@ -315,11 +325,6 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             const holderHeader = this.page.getByRole('button', { name: /Booking holder/i });
             await holderHeader.scrollIntoViewIfNeeded();
 
-            // abre seccion si no esta visible
-            if (!(await this.holderPrefix.isVisible())) {
-                await holderHeader.click();
-                await this.holderPrefix.waitFor({ state: 'visible', timeout: 5000 });
-            }
 
             // selecciona titular de la reserva
             await this.holderPassengerSelect.scrollIntoViewIfNeeded();
@@ -328,10 +333,9 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
 
             // ingresa datos de contacto
             if (data.contact?.prefix) {
-                await this.holderPrefix.fill(data.contact.prefix);
-                await this.page.getByRole('option', { name: data.contact.prefix })
-                    .or(this.page.getByText(data.contact.prefix, { exact: true }))
-                    .first().click();
+                await this.holderPrefix.scrollIntoViewIfNeeded();
+                await this.holderPrefix.click();
+                await this.page.getByRole('option', { name: data.contact.prefix }).click();
             }
             if (data.contact?.phone) {
                 await this.holderPhone.fill(data.contact.phone);
@@ -345,4 +349,17 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             await this.termsCheckbox.check();
             await this.promotionsCheckbox.check();
         }
+
+        async selectBaggageOption(option: string) {
+            try {
+                await this.page.waitForLoadState('networkidle', { timeout: 60000 });
+                await this.baggageHeading.isVisible();
+                const formatted = option.toLowerCase();
+                const targetRadio = formatted.includes('yes') ? this.yesBaggageRadio : this.noBaggageRadio;
+                await targetRadio.check();
+            } catch {
+                // si no encuentra el texto continua sin fallar
+            }
+        }
+
     }
