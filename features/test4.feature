@@ -25,3 +25,8 @@ Feature: Flight search on Avianca
     Then selects continue to payment
     Then the Request Services screen opens
     When selects "No, I have what I need" if baggage menu is present
+    Then selects "Priority boarding" service
+    Then selects all passegers for the service
+    Then confirm service
+    Then clic continue to final payment
+    And validates the final booking details

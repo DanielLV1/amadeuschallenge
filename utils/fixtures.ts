@@ -5,6 +5,7 @@ import { FlightContext } from "./flightContext";
 type Fixtures = {
     flightContext: FlightContext;
     homePage: aviancaHomePage;
+    
 };
 
 // un contexto y una instancia por escenario compartidos entre steps

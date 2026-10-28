@@ -18,7 +18,7 @@ const testDir = defineBddConfig({
 
 export default defineConfig({
   testDir,
-  timeout: 90000,
+  timeout: 150000,
   /* Run tests in files in parallel */
   fullyParallel: true,
 

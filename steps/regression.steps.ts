@@ -16,6 +16,11 @@ When('selects {string} option', async ({ homePage }, tripType: string) => {
     await homePage.selectTripType(tripType);
 });
 
+When('the origin is {string}', async ({ homePage }, origin: string) => {
+    await homePage.enterOrigin(origin);
+    await expect(homePage.origin).toHaveValue(new RegExp(homePage.context.origin!));
+});
+
 When('the destination is {string}', async ({ homePage }, destination: string) => {
     await homePage.enterDestination(destination);
     await expect(homePage.destination).toHaveValue(new RegExp(homePage.context.destination!));
@@ -104,3 +109,28 @@ Then('the Request Services screen opens', async ({ homePage }) => {
 When('selects {string} if baggage menu is present', async ({ homePage }, option: string) => {
   await homePage.selectBaggageOption(option);
 });
+When('selects {string} service', async ({ homePage }, service: string) => {
+  await homePage.selectService(service);
+});
+When('selects all passegers for the service', async ({ homePage }) => {
+  await homePage.selectAllPassengersCheckbox.check();
+});
+Then('confirm service', async ({ homePage }) => {
+    await homePage.confirmService.click();
+    await expect(homePage.requestServicesTitle).toBeVisible({timeout: 60000});
+    await homePage.continueToFinalPayment.scrollIntoViewIfNeeded();
+    expect(homePage.continueToFinalPayment).toBeVisible({timeout: 60000});
+    await homePage.validateTotalWithAddedService();
+});
+Then('clic continue to final payment', async ({ homePage }) => {
+    await homePage.continueToFinalPayment.scrollIntoViewIfNeeded();
+    await homePage.continueToFinalPayment.click();
+});
+
+Then('validates the final booking details', async ({ homePage }) => {
+    await homePage.validateFinalBookingDetails();
+});
+
+
+
+  

@@ -43,6 +43,16 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
         readonly noBaggageRadio: Locator;
         readonly yesBaggageRadio: Locator;
         readonly baggageHeading: Locator;
+        readonly selectAllPassengersCheckbox: Locator;
+        readonly confirmService: Locator;
+        readonly continueToFinalPayment: Locator;
+        readonly serviceAddedPrice: Locator;
+        readonly totalBookingPrice: Locator;
+        readonly testOriginDetails: Locator;
+        readonly testDestination: Locator;
+        readonly testDepartureDetails: Locator;
+        readonly testFareDetails: Locator;
+        readonly testServiceChargePrice: Locator;
 
         constructor(page: Page, context: FlightContext = {}) {
             this.page = page;
@@ -85,6 +95,29 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             this.noBaggageRadio = page.getByRole('radio', { name: /No, I have what I need/i });
             this.yesBaggageRadio = page.getByRole('radio', { name: /Yes, I want to add baggage/i });
             this.baggageHeading = page.getByRole('heading', { name: 'Do you need more baggage?' });
+            this.selectAllPassengersCheckbox = page.getByRole('checkbox', { name: 'Select all passengers USD' });
+            this.confirmService = page.getByTestId('nbf-button');
+            this.continueToFinalPayment = page.getByTestId('order-continue-btn-footer-static')
+                .or(page.locator('[data-test="order-continue-btn-footer-static"]'))
+                .or(page.getByRole('button', { name: /Go to payment/i }))
+                .first();
+            this.serviceAddedPrice = page.getByTestId('ancilliaries-card-PBRD').getByText('USD').first();
+            this.totalBookingPrice = page.getByTestId('not-sticky-cart-sticky-bottom').getByText('USD').nth(1);
+            this.testOriginDetails = page.getByTestId('testOriginDetails')
+                .or(page.locator('[data-test="testOriginDetails"]'))
+                .first();
+            this.testDestination = page.getByTestId('testDestination')
+                .or(page.locator('[data-test="testDestination"]'))
+                .first();
+            this.testDepartureDetails = page.getByTestId('testDeparturedetails')
+                .or(page.locator('[data-test="testDeparturedetails"]'))
+                .first();
+            this.testFareDetails = page.getByTestId('testfareDetails')
+                .or(page.locator('[data-test="testfareDetails"]'))
+                .first();
+            this.testServiceChargePrice = page.getByTestId('testServiceChargePrice')
+                .or(page.locator('[data-test="testServiceChargePrice"]'))
+                .first();
         }
 
         async goto() {
@@ -118,11 +151,65 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             }
         }
 
+        // extrae codigo iata de tres letras
+        extractIata(text: string): string | undefined {
+            if (!text) return undefined;
+            const parenMatch = text.match(/\(([A-Z]{3})\)/);
+            if (parenMatch) return parenMatch[1];
+
+            const endMatch = text.match(/\b([A-Z]{3})\s*$/);
+            if (endMatch) return endMatch[1];
+
+            const matches = text.match(/\b[A-Z]{3}\b/g);
+            if (matches && matches.length > 0) {
+                return matches[matches.length - 1];
+            }
+            return undefined;
+        }
+
+        // obtiene codigo iata del campo o sus atributos
+        async getIataFromField(field: Locator): Promise<string | undefined> {
+            const val = await field.inputValue().catch(() => '');
+            let iata = this.extractIata(val);
+            if (iata) return iata;
+
+            const ariaLabel = await field.getAttribute('aria-label').catch(() => '');
+            iata = this.extractIata(ariaLabel || '');
+            if (iata) return iata;
+
+            const parentText = await field.locator('..').innerText().catch(() => '');
+            iata = this.extractIata(parentText);
+            if (iata) return iata;
+
+            return undefined;
+        }
+
+        async enterOrigin(origin: string) {
+            await this.origin.click();
+            await this.origin.fill(origin);
+            const option = this.page.getByRole('option', { name: origin }).first();
+            const optionText = await option.innerText().catch(() => '');
+            await option.click();
+            this.context.origin = origin;
+            const iata = this.extractIata(optionText);
+            if (iata) {
+                this.context.originIata = iata;
+                console.log(`Origen: ${this.context.origin} IATA: ${this.context.originIata}`);
+            }
+        }
+
         async enterDestination(destination: string) {
             await this.destination.click();
             await this.destination.pressSequentially(destination, { delay: 100 });
-            await this.page.getByRole('option', { name: destination }).first().click();
+            const option = this.page.getByRole('option', { name: destination }).first();
+            const optionText = await option.innerText().catch(() => '');
+            await option.click();
             this.context.destination = destination;
+            const iata = this.extractIata(optionText);
+            if (iata) {
+                this.context.destinationIata = iata;
+                console.log(`Destino: ${this.context.destination} IATA: ${this.context.destinationIata}`);
+            }
         }
         async selectDepartureDate() {
             //seleccionar tercero  
@@ -200,6 +287,11 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
             await expect(this.passenger).toHaveText(new RegExp(`Passengers\\s*${quantity}\\s*$`));
         }
         async confirmInitialSearch() {
+            // guarda codigos iata en el contexto antes de buscar
+            this.context.originIata = await this.getIataFromField(this.origin) || this.context.originIata;
+            this.context.destinationIata = await this.getIataFromField(this.destination) || this.context.destinationIata;
+            console.log(`IATA Origin: ${this.context.originIata} IATA Destination: ${this.context.destinationIata}`);
+
             await this.searchButton.click();
             await this.page.waitForURL(/booking\.avianca\.com/, { timeout: 30000 });
             
@@ -259,7 +351,7 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
         async verifyTripSummary() {
             await expect(this.usdCurrency).toBeVisible({ timeout: 20000 });
             const totalText = await this.usdCurrency.innerText();
-            this.context.farePrice = parseFloat(totalText.replace(/[^\d]/g, ''));
+            this.context.farePrice = this.parsePrice(totalText);
             console.log(`Total prize on summary: ${this.context.farePrice}`);
             await expect(this.continueButton).toBeVisible({ timeout: 20000 });
             await this.continueButton.click();
@@ -352,14 +444,91 @@ import { FlightContext, PassengerType, PASSENGER_TYPES, toPassengerType } from "
 
         async selectBaggageOption(option: string) {
             try {
-                await this.page.waitForLoadState('networkidle', { timeout: 60000 });
-                await this.baggageHeading.isVisible();
+                await this.baggageHeading.waitFor({ state: 'visible', timeout: 15000 });
                 const formatted = option.toLowerCase();
                 const targetRadio = formatted.includes('yes') ? this.yesBaggageRadio : this.noBaggageRadio;
+                if (!await targetRadio.isVisible()) {
+                    await this.baggageHeading.click();
+                }
                 await targetRadio.check();
+                // guarda en contexto opcion elegida
+                this.context.baggageOption = option;
             } catch {
                 // si no encuentra el texto continua sin fallar
             }
         }
+
+        async selectService(service: string) {
+            const serviceElement = this.page.getByText(service).first();
+            await serviceElement.click();
+            const serviceTitle = this.page.getByRole('heading', { name: service });
+            await serviceTitle.waitFor({ state: 'visible', timeout: 20000 });
+        }
+
+        // extrae valor numerico del texto de moneda
+        parsePrice(text: string): number {
+            const clean = text.replace(/[^0-9,.]/g, '').trim();
+            if (clean.includes(',') && clean.includes('.')) {
+                return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+            }
+            if (clean.includes(',')) {
+                return parseFloat(clean.replace(',', '.'));
+            }
+            return parseFloat(clean) || 0;
+        }
+
+        // valida que la suma coincida con el total de la reserva
+        async validateTotalWithAddedService() {
+            await this.serviceAddedPrice.waitFor({ state: 'visible', timeout: 15000 });
+            const addedText = await this.serviceAddedPrice.innerText();
+            const addedPrice = this.parsePrice(addedText);
+
+            const initialPrice = this.context.farePrice || 0;
+            const expectedTotal = initialPrice + addedPrice;
+
+            await this.totalBookingPrice.waitFor({ state: 'visible', timeout: 15000 });
+            const totalBookingText = await this.totalBookingPrice.innerText();
+            const actualTotal = this.parsePrice(totalBookingText);
+
+            console.log(`Precio base: ${initialPrice} Adicional: ${addedPrice} Esperado: ${expectedTotal} Actual: ${actualTotal}`);
+            expect(actualTotal).toBeCloseTo(expectedTotal, 2);
+
+            // actualiza precio acumulado en contexto
+            this.context.farePrice = actualTotal;
+        }
+
+        // valida origen destino fecha y tarifa en el paso de pago
+        async validateFinalBookingDetails() {
+            // valida origen y destino iata
+            if (this.context.originIata) {
+                await expect(this.testOriginDetails).toBeVisible({ timeout: 30000 });
+                await expect(this.testOriginDetails).toContainText(this.context.originIata);
+            }
+            if (this.context.destinationIata) {
+                await expect(this.testDestination).toBeVisible({ timeout: 30000 });
+                await expect(this.testDestination).toContainText(this.context.destinationIata);
+            }
+
+            // formatea y valida fecha visible
+            if (this.context.departureDate) {
+                const dateObj = parse(this.context.departureDate, 'MM/dd/yyyy', new Date());
+                const expectedFrontDate = format(dateObj, 'EEE, d MMM');
+                await expect(this.testDepartureDetails).toBeVisible({ timeout: 30000 });
+                await expect(this.testDepartureDetails).toContainText(expectedFrontDate);
+            }
+
+            // valida que el precio final coincida con el farePrice del contexto
+            await expect(this.testFareDetails).toBeVisible({ timeout: 30000 });
+            const fareText = await this.testFareDetails.innerText();
+            const farePrice = this.parsePrice(fareText);
+
+            const expectedPrice = this.context.farePrice || 0;
+            console.log(`Tarifa final: ${farePrice} Esperado: ${expectedPrice}`);
+            expect(farePrice).toBeCloseTo(expectedPrice, 2);
+            
+
+
+        }
+        
 
     }

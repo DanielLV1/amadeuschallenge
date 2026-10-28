@@ -2,10 +2,14 @@ export const PASSENGER_TYPES = ['Adults', 'Youth', 'Children', 'Infants'] as con
 export type PassengerType = typeof PASSENGER_TYPES[number];
 
 export interface FlightContext {
+    origin?: string;
+    originIata?: string;
     destination?: string;
+    destinationIata?: string;
     departureDate?: string;
     passengers?: Partial<Record<PassengerType, number>>;
     farePrice?: number;
+    baggageOption?: string;
 }
 
 // acepta adults ADULTS o Adults desde el feature
